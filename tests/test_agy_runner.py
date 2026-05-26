@@ -4,7 +4,7 @@ import pytest
 from mcp_antigravity.agy_runner import run_agy_command, find_agy_binary
 
 @patch("mcp_antigravity.agy_runner.find_agy_binary")
-@patch("subprocess.run")
+@patch("mcp_antigravity.agy_runner.subprocess.run")
 def test_run_agy_command_success(mock_run, mock_find):
     mock_find.return_value = "/mock/agy"
     mock_run.return_value.returncode = 0
@@ -22,7 +22,7 @@ def test_run_agy_command_success(mock_run, mock_find):
     assert kwargs["timeout"] == 10.0
 
 @patch("mcp_antigravity.agy_runner.find_agy_binary")
-@patch("subprocess.run")
+@patch("mcp_antigravity.agy_runner.subprocess.run")
 def test_run_agy_command_error(mock_run, mock_find):
     mock_find.return_value = "/mock/agy"
     mock_run.return_value.returncode = 1
