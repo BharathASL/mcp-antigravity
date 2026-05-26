@@ -1,0 +1,30 @@
+[project]
+name = "mcp-antigravity"
+version = "0.1.0"
+description = "An MCP server that proxies requests to the Google Antigravity CLI (agy)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Author", email = "author@example.com" }]
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[project.scripts]
+mcp-antigravity = "mcp_antigravity:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
