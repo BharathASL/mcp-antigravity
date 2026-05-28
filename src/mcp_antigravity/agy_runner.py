@@ -40,7 +40,7 @@ def run_agy_command(args: list[str], timeout_s: float) -> str:
         result = subprocess.run(
             cmd,
             env=env,
-            stdin=None,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=timeout_s,
@@ -49,6 +49,14 @@ def run_agy_command(args: list[str], timeout_s: float) -> str:
         
         if result.returncode != 0:
             raise RuntimeError(f"agy exited with code {result.returncode}\nStderr:\n{result.stderr}")
+            
+        stdout_str = result.stdout.strip()
+        if not stdout_str:
+            raise RuntimeError(
+                "agy returned an empty response. This usually means your Antigravity CLI "
+                "auth token has expired or the CLI failed silently. Please run `agy` "
+                "interactively in your terminal to log in again."
+            )
             
         return result.stdout
         
