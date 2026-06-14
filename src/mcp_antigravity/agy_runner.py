@@ -28,8 +28,11 @@ def find_agy_binary() -> Optional[str]:
             
     return None
 
-def run_agy_command(args: list[str], timeout_s: float) -> str:
-    binary = find_agy_binary()
+def run_agy_command(
+    args: list[str], timeout_s: float, binary: Optional[str] = None
+) -> str:
+    if binary is None:
+        binary = find_agy_binary()
     if not binary:
         raise RuntimeError("Antigravity CLI (agy) binary not found. Please install it and ensure it's in your PATH.")
 
@@ -53,9 +56,13 @@ def run_agy_command(args: list[str], timeout_s: float) -> str:
         stdout_str = result.stdout.strip()
         if not stdout_str:
             raise RuntimeError(
-                "agy returned an empty response. This usually means your Antigravity CLI "
-                "auth token has expired or the CLI failed silently. Please run `agy` "
-                "interactively in your terminal to log in again."
+                "agy exited successfully but wrote nothing to stdout. Common causes:\n"
+                "  - The Antigravity CLI auth token has expired (run `agy` interactively "
+                "to log in again).\n"
+                "  - The agy version renders its response straight to the terminal instead "
+                "of stdout, so it is lost when run non-interactively (known limitation on "
+                "some platforms/versions). Run `agy_health` to confirm the binary and auth, "
+                "and try upgrading the CLI with `agy update`."
             )
             
         return result.stdout

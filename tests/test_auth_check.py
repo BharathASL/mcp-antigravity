@@ -1,4 +1,3 @@
-import os
 from unittest.mock import patch, MagicMock
 from mcp_antigravity.auth_check import check_auth_files
 

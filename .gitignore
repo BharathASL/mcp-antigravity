@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# uv
+uv.lock
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# agy workspace artifacts (may contain symlinks to credentials)
+.antigravitycli/
