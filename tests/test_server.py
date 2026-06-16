@@ -3,7 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_antigravity.server import agy_health, mcp, parse_timeout
+from mcp_antigravity.server import (
+    agy_continue,
+    agy_health,
+    agy_models,
+    agy_print,
+    mcp,
+    parse_timeout,
+)
 
 
 def test_server_lists_all_tools():
@@ -12,7 +19,48 @@ def test_server_lists_all_tools():
     # exist and crashed on import (so any MCP client would hang on startup).
     tools = asyncio.run(mcp.list_tools())
     names = {t.name for t in tools}
-    assert names == {"agy_print", "agy_continue", "agy_health"}
+    assert names == {"agy_print", "agy_continue", "agy_health", "agy_models"}
+
+
+@patch("mcp_antigravity.server.check_auth_files", return_value=(True, ""))
+@patch("mcp_antigravity.server.run_agy_command", return_value="OK")
+def test_agy_print_passes_model(mock_run, mock_auth):
+    agy_print("hi", model="Gemini 3.5 Flash (Medium)")
+    args = mock_run.call_args.args[0]
+    assert "--model" in args
+    assert args[args.index("--model") + 1] == "Gemini 3.5 Flash (Medium)"
+
+
+@patch("mcp_antigravity.server.check_auth_files", return_value=(True, ""))
+@patch("mcp_antigravity.server.run_agy_command", return_value="OK")
+def test_agy_print_omits_model_by_default(mock_run, mock_auth):
+    agy_print("hi")
+    assert "--model" not in mock_run.call_args.args[0]
+
+
+@patch("mcp_antigravity.server.check_auth_files", return_value=(True, ""))
+@patch("mcp_antigravity.server.run_agy_command", return_value="OK")
+def test_agy_continue_passes_model(mock_run, mock_auth):
+    agy_continue("hi", conversation_id="abc", model="Gemini 3.5 Pro")
+    args = mock_run.call_args.args[0]
+    assert args[args.index("--model") + 1] == "Gemini 3.5 Pro"
+    assert "--conversation" in args
+
+
+@patch("mcp_antigravity.server.check_auth_files", return_value=(True, ""))
+@patch("mcp_antigravity.server.run_agy_command", return_value="model-a\nmodel-b")
+def test_agy_models_invokes_subcommand(mock_run, mock_auth):
+    result = agy_models()
+    assert mock_run.call_args.args[0] == ["models"]
+    assert result == "model-a\nmodel-b"
+
+
+@patch("mcp_antigravity.server.check_auth_files", return_value=(False, "no creds"))
+@patch("mcp_antigravity.server.run_agy_command")
+def test_agy_models_auth_gate(mock_run, mock_auth):
+    with pytest.raises(RuntimeError, match="Auth check failed"):
+        agy_models()
+    mock_run.assert_not_called()
 
 
 @pytest.mark.parametrize(

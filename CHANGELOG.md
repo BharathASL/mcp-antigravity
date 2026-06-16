@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Model selection: `agy_print` and `agy_continue` accept an optional `model`
+  argument that maps to `agy --model`. New `agy_models` tool wraps `agy models`
+  to discover valid names.
+
 ### Fixed
 - **Server failed to start.** The server was built on the low-level `Server` API
   but registered tools with `@server.tool()`, which only exists on `FastMCP`.

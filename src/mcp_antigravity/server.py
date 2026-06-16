@@ -15,14 +15,7 @@ def parse_timeout(timeout_str: str) -> float:
     return float(timeout_str)
 
 
-@mcp.tool()
-def agy_print(
-    prompt: str,
-    add_dirs: list[str] | None = None,
-    timeout: str = "5m",
-    skip_permissions: bool = True,
-) -> str:
-    """Invokes agy --print with the given prompt."""
+def _require_auth() -> None:
     ok, err_msg = check_auth_files()
     if not ok:
         raise RuntimeError(
@@ -30,9 +23,29 @@ def agy_print(
             "Please run `agy` interactively in your terminal to complete login."
         )
 
+
+@mcp.tool()
+def agy_print(
+    prompt: str,
+    add_dirs: list[str] | None = None,
+    timeout: str = "5m",
+    skip_permissions: bool = True,
+    model: str | None = None,
+) -> str:
+    """Invokes agy --print with the given prompt.
+
+    Pass `model` to override the model for this call (e.g. "Gemini 3.5 Flash
+    (Medium)"). Use the `agy_models` tool to discover valid names. When omitted,
+    agy uses its configured default.
+    """
+    _require_auth()
+
     timeout_s = min(parse_timeout(timeout), 600.0)
 
     args = ["--print", prompt, "--print-timeout", timeout]
+
+    if model:
+        args.extend(["--model", model])
 
     if add_dirs:
         for d in add_dirs:
@@ -49,18 +62,21 @@ def agy_continue(
     prompt: str,
     conversation_id: str | None = None,
     timeout: str = "5m",
+    model: str | None = None,
 ) -> str:
-    """Continues a previous agy conversation with a new prompt."""
-    ok, err_msg = check_auth_files()
-    if not ok:
-        raise RuntimeError(
-            f"Auth check failed: {err_msg}\n"
-            "Please run `agy` interactively in your terminal to complete login."
-        )
+    """Continues a previous agy conversation with a new prompt.
+
+    Pass `model` to override the model for this call. Use the `agy_models` tool
+    to discover valid names. When omitted, agy uses its configured default.
+    """
+    _require_auth()
 
     timeout_s = min(parse_timeout(timeout), 600.0)
 
     args = ["--print", prompt, "--print-timeout", timeout]
+
+    if model:
+        args.extend(["--model", model])
 
     if conversation_id:
         args.extend(["--conversation", conversation_id])
@@ -68,6 +84,19 @@ def agy_continue(
         args.append("-c")
 
     return run_agy_command(args, timeout_s)
+
+
+@mcp.tool()
+def agy_models(timeout: str = "30s") -> str:
+    """Lists the models available to agy (wraps `agy models`).
+
+    Note: some agy versions render this list to the terminal rather than stdout,
+    in which case the call reports an empty response (see README troubleshooting).
+    """
+    _require_auth()
+
+    timeout_s = min(parse_timeout(timeout), 600.0)
+    return run_agy_command(["models"], timeout_s)
 
 
 @mcp.tool()
