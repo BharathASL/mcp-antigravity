@@ -150,6 +150,9 @@ def _run_via_pty(
 ) -> tuple[str, int, str]:
     # POSIX counterpart of the ConPTY path: agy may render to its controlling
     # terminal rather than stdout, so give it a real pty and capture that.
+    # Note: a process that writes and exits in the same instant can race the
+    # macOS/BSD flush-on-close and lose its final bytes; agy streams output over
+    # seconds so this does not apply in practice.
     import errno
     import pty
     import select

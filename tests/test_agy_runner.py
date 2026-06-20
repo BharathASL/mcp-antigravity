@@ -127,20 +127,29 @@ def test_run_agy_command_conpty_captures_and_strips(mock_find):
     assert result == "SMOKE OK"
 
 
+# A process that emits output then lingers briefly, like a real streaming CLI.
+# (A command that exits instantly, e.g. `echo`, can race the macOS/BSD pty
+# flush-on-close and is not representative of agy's multi-second output.)
+_PTY_EMIT = "printf '{}\\n'; sleep 0.3"
+
+
 @pytest.mark.skipif(os.name != "posix", reason="pty path is POSIX-only")
-def test_run_via_pty_real_echo():
+def test_run_via_pty_real_command():
     # Runs a real command through the pty on POSIX CI runners (Linux/macOS),
     # genuinely exercising the openpty/Popen/select/read loop.
-    out, code, _ = _run_via_pty(["/bin/echo", "hello pty"], os.environ.copy(), 10.0)
+    cmd = ["/bin/sh", "-c", _PTY_EMIT.format("hello pty")]
+    out, code, _ = _run_via_pty(cmd, os.environ.copy(), 10.0)
     assert code == 0
     assert "hello pty" in out
 
 
 @pytest.mark.skipif(os.name != "posix", reason="pty path is POSIX-only")
 def test_run_agy_command_pty_real_dispatch():
-    # End-to-end through the public API on POSIX, using /bin/echo as a stand-in
+    # End-to-end through the public API on POSIX, using /bin/sh as a stand-in
     # binary so the pty capture path is validated without agy installed.
-    result = run_agy_command(["pty dispatch works"], 10.0, binary="/bin/echo")
+    result = run_agy_command(
+        ["-c", _PTY_EMIT.format("pty dispatch works")], 10.0, binary="/bin/sh"
+    )
     assert "pty dispatch works" in result
 
 
