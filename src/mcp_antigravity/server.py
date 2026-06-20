@@ -90,8 +90,8 @@ def agy_continue(
 def agy_models(timeout: str = "30s") -> str:
     """Lists the models available to agy (wraps `agy models`).
 
-    Note: some agy versions render this list to the terminal rather than stdout,
-    in which case the call reports an empty response (see README troubleshooting).
+    Returns one model name per line, suitable for the `model` argument of
+    `agy_print` / `agy_continue`.
     """
     _require_auth()
 

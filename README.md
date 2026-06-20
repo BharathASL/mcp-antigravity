@@ -48,13 +48,15 @@ Add the following to your AI tool's MCP configuration file (e.g., Claude Code's 
 ## Troubleshooting
 If `agy` authentication becomes stuck, delete the `~/.antigravitycli/` and `~/.gemini/oauth_creds.json` files and re-run `agy` interactively in your terminal to log in again.
 
-**Tools return an "empty response" even though `agy_health` is green.** The MCP
-server captures `agy`'s stdout over a pipe. Some `agy` versions render the model
-response straight to the terminal (a "typewriter" animation) instead of writing
-it to stdout, so nothing is captured when the CLI is run non-interactively. Run
-`agy update` to pick up a version that supports non-interactive `--print` output,
-and verify with `agy --print "hi" > out.txt` — if `out.txt` is empty, your `agy`
-build does not yet emit print-mode output to stdout.
+**Tools return an "empty response" even though `agy_health` is green.** `agy`
+renders its `--print` response to the terminal rather than to stdout, so a plain
+pipe captures nothing. On **Windows** this server runs `agy` under a pseudo-console
+(ConPTY, via `pywinpty`) and reconstructs the text, so output is captured
+normally. On **macOS/Linux** the server currently reads stdout directly; if your
+`agy` build also writes only to the terminal there, run `agy update` (and verify
+with `agy --print "hi" > out.txt` — an empty `out.txt` means print-mode output is
+not going to stdout). Capturing via a PTY on those platforms is a planned
+follow-up.
 
 ## Contribution
 PRs are welcome! Before submitting, ensure all tests pass:

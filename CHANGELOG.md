@@ -5,6 +5,12 @@
 - Model selection: `agy_print` and `agy_continue` accept an optional `model`
   argument that maps to `agy --model`. New `agy_models` tool wraps `agy models`
   to discover valid names.
+- **Windows output capture (ConPTY).** `agy --print` renders its response to the
+  terminal, not stdout, so a plain pipe captured nothing and every print-family
+  tool returned an "empty response". On Windows the server now runs `agy` under a
+  pseudo-console (`pywinpty`) and reconstructs the text — emulating carriage
+  returns and erase-line sequences so progress spinners collapse to their final
+  state. `agy_print`, `agy_continue`, and `agy_models` now return real output.
 
 ### Fixed
 - **Server failed to start.** The server was built on the low-level `Server` API
