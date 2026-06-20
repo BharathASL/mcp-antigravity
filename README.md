@@ -40,12 +40,20 @@ Add the following to your AI tool's MCP configuration file (e.g., Claude Code's 
 
 ## Tools
 
-- `agy_print(prompt, add_dirs, timeout, skip_permissions)`: Runs `agy --print` to perform tasks. `skip_permissions` defaults to true.
-- `agy_continue(prompt, conversation_id, timeout)`: Continues a recent `agy` conversation using `-c` or `--conversation`.
+- `agy_print(prompt, add_dirs, timeout, skip_permissions, model)`: Runs `agy --print` to perform tasks. `skip_permissions` defaults to true. Pass `model` to override the model for the call (e.g. `"Gemini 3.5 Flash (Medium)"`); omit it to use agy's configured default.
+- `agy_continue(prompt, conversation_id, timeout, model)`: Continues a recent `agy` conversation using `-c` or `--conversation`. Accepts the same optional `model` override.
+- `agy_models(timeout)`: Lists the models available to `agy` (wraps `agy models`), to discover valid names for the `model` argument.
 - `agy_health()`: Diagnostic tool to verify `agy` binary and auth files are available.
 
 ## Troubleshooting
 If `agy` authentication becomes stuck, delete the `~/.antigravitycli/` and `~/.gemini/oauth_creds.json` files and re-run `agy` interactively in your terminal to log in again.
+
+**Tools return an "empty response" even though `agy_health` is green.** `agy`
+renders its `--print` response to the terminal rather than to stdout, so a plain
+pipe captures nothing. To handle this the server runs `agy` under a
+pseudo-terminal and reconstructs the text: a ConPTY (via `pywinpty`) on
+**Windows** and a stdlib `pty` on **macOS/Linux**. If you still see empty
+responses, confirm `agy_health` is green and run `agy update`.
 
 ## Contribution
 PRs are welcome! Before submitting, ensure all tests pass:
