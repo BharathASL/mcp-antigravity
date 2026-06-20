@@ -170,6 +170,7 @@ def _run_via_pty(
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 proc.kill()
+                proc.wait()
                 raise RuntimeError(f"Command exceeded {timeout_s} seconds timeout")
             rlist, _, _ = select.select([master], [], [], min(remaining, 0.5))
             if master in rlist:
@@ -222,13 +223,10 @@ def run_agy_command(
 
     if not stdout.strip():
         raise RuntimeError(
-            "agy exited successfully but wrote nothing to stdout. Common causes:\n"
-            "  - The Antigravity CLI auth token has expired (run `agy` interactively "
-            "to log in again).\n"
-            "  - The agy version renders its response straight to the terminal instead "
-            "of stdout, so it is lost when run non-interactively (known limitation on "
-            "some platforms/versions). Run `agy_health` to confirm the binary and auth, "
-            "and try upgrading the CLI with `agy update`."
+            "agy exited successfully but produced no output. This usually means the "
+            "Antigravity CLI auth token has expired or the request returned nothing. "
+            "Run `agy_health` to confirm the binary and auth; if needed, run `agy` "
+            "interactively to log in again, or `agy update` to upgrade the CLI."
         )
 
     return stdout

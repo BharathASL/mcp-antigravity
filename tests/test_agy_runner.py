@@ -62,7 +62,7 @@ def test_run_agy_command_empty_response(mock_run, mock_find):
     mock_run.return_value.stdout = "   \n"
     mock_run.return_value.stderr = ""
 
-    with pytest.raises(RuntimeError, match="wrote nothing to stdout"):
+    with pytest.raises(RuntimeError, match="produced no output"):
         run_agy_command(["--print", "test"], 10.0)
 
 
