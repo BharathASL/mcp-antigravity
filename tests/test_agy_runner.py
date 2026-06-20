@@ -1,16 +1,28 @@
+import os
 import subprocess
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_antigravity.agy_runner import _render_terminal, run_agy_command
+from mcp_antigravity.agy_runner import (
+    _render_terminal,
+    _run_via_conpty,
+    _run_via_pty,
+    _run_via_subprocess,
+    run_agy_command,
+)
+
+# Force the plain-pipe runner so these tests are platform-independent.
+_force_subprocess = patch(
+    "mcp_antigravity.agy_runner._select_capture", new=lambda: _run_via_subprocess
+)
 
 
-@patch("mcp_antigravity.agy_runner._use_conpty", return_value=False)
+@_force_subprocess
 @patch("mcp_antigravity.agy_runner.find_agy_binary")
 @patch("mcp_antigravity.agy_runner.subprocess.run")
-def test_run_agy_command_success(mock_run, mock_find, mock_conpty):
+def test_run_agy_command_success(mock_run, mock_find):
     mock_find.return_value = "/mock/agy"
     mock_run.return_value.returncode = 0
     mock_run.return_value.stdout = "mock output"
@@ -28,10 +40,10 @@ def test_run_agy_command_success(mock_run, mock_find, mock_conpty):
     assert kwargs["timeout"] == 10.0
 
 
-@patch("mcp_antigravity.agy_runner._use_conpty", return_value=False)
+@_force_subprocess
 @patch("mcp_antigravity.agy_runner.find_agy_binary")
 @patch("mcp_antigravity.agy_runner.subprocess.run")
-def test_run_agy_command_error(mock_run, mock_find, mock_conpty):
+def test_run_agy_command_error(mock_run, mock_find):
     mock_find.return_value = "/mock/agy"
     mock_run.return_value.returncode = 1
     mock_run.return_value.stdout = ""
@@ -41,10 +53,10 @@ def test_run_agy_command_error(mock_run, mock_find, mock_conpty):
         run_agy_command(["--print", "test"], 10.0)
 
 
-@patch("mcp_antigravity.agy_runner._use_conpty", return_value=False)
+@_force_subprocess
 @patch("mcp_antigravity.agy_runner.find_agy_binary")
 @patch("mcp_antigravity.agy_runner.subprocess.run")
-def test_run_agy_command_empty_response(mock_run, mock_find, mock_conpty):
+def test_run_agy_command_empty_response(mock_run, mock_find):
     mock_find.return_value = "/mock/agy"
     mock_run.return_value.returncode = 0
     mock_run.return_value.stdout = "   \n"
@@ -54,10 +66,10 @@ def test_run_agy_command_empty_response(mock_run, mock_find, mock_conpty):
         run_agy_command(["--print", "test"], 10.0)
 
 
-@patch("mcp_antigravity.agy_runner._use_conpty", return_value=False)
+@_force_subprocess
 @patch("mcp_antigravity.agy_runner.find_agy_binary")
 @patch("mcp_antigravity.agy_runner.subprocess.run")
-def test_run_agy_command_reuses_supplied_binary(mock_run, mock_find, mock_conpty):
+def test_run_agy_command_reuses_supplied_binary(mock_run, mock_find):
     # When a binary is supplied, run_agy_command must not perform another PATH scan.
     mock_run.return_value.returncode = 0
     mock_run.return_value.stdout = "ok"
@@ -95,9 +107,9 @@ def test_render_terminal_collapses_spinner():
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="ConPTY path is Windows-only")
-@patch("mcp_antigravity.agy_runner._use_conpty", return_value=True)
+@patch("mcp_antigravity.agy_runner._select_capture", new=lambda: _run_via_conpty)
 @patch("mcp_antigravity.agy_runner.find_agy_binary", return_value="C:/mock/agy.exe")
-def test_run_agy_command_conpty_captures_and_strips(mock_find, mock_conpty):
+def test_run_agy_command_conpty_captures_and_strips(mock_find):
     import winpty
 
     reads = ["\x1b[?1004hSMOKE", " OK\r\n"]
@@ -113,6 +125,23 @@ def test_run_agy_command_conpty_captures_and_strips(mock_find, mock_conpty):
 
     pty.spawn.assert_called_once()
     assert result == "SMOKE OK"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="pty path is POSIX-only")
+def test_run_via_pty_real_echo():
+    # Runs a real command through the pty on POSIX CI runners (Linux/macOS),
+    # genuinely exercising the openpty/Popen/select/read loop.
+    out, code, _ = _run_via_pty(["/bin/echo", "hello pty"], os.environ.copy(), 10.0)
+    assert code == 0
+    assert "hello pty" in out
+
+
+@pytest.mark.skipif(os.name != "posix", reason="pty path is POSIX-only")
+def test_run_agy_command_pty_real_dispatch():
+    # End-to-end through the public API on POSIX, using /bin/echo as a stand-in
+    # binary so the pty capture path is validated without agy installed.
+    result = run_agy_command(["pty dispatch works"], 10.0, binary="/bin/echo")
+    assert "pty dispatch works" in result
 
 
 def _raise_eof():

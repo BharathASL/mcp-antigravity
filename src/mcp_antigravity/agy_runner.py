@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -86,13 +87,6 @@ def find_agy_binary() -> Optional[str]:
     return None
 
 
-def _use_conpty() -> bool:
-    """On Windows, agy --print renders to the console rather than stdout, so a
-    plain pipe captures nothing. A pseudo-console (ConPTY) captures it. Other
-    platforms use the regular stdout pipe."""
-    return sys.platform == "win32"
-
-
 def _run_via_subprocess(
     cmd: list[str], env: dict, timeout_s: float
 ) -> tuple[str, int, str]:
@@ -151,6 +145,62 @@ def _run_via_conpty(
     return output, (exit_code or 0), output
 
 
+def _run_via_pty(
+    cmd: list[str], env: dict, timeout_s: float
+) -> tuple[str, int, str]:
+    # POSIX counterpart of the ConPTY path: agy may render to its controlling
+    # terminal rather than stdout, so give it a real pty and capture that.
+    import errno
+    import pty
+    import select
+
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        cmd, env=env, stdin=slave, stdout=slave, stderr=slave, close_fds=True
+    )
+    os.close(slave)
+
+    chunks: list[bytes] = []
+    deadline = time.monotonic() + timeout_s
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                proc.kill()
+                raise RuntimeError(f"Command exceeded {timeout_s} seconds timeout")
+            rlist, _, _ = select.select([master], [], [], min(remaining, 0.5))
+            if master in rlist:
+                try:
+                    data = os.read(master, 65536)
+                except OSError as exc:
+                    if exc.errno == errno.EIO:  # slave closed -> EOF (Linux)
+                        break
+                    raise
+                if not data:  # EOF (macOS/BSD)
+                    break
+                chunks.append(data)
+            elif proc.poll() is not None:
+                break
+    finally:
+        os.close(master)
+
+    returncode = proc.wait()
+    output = _render_terminal(b"".join(chunks).decode("utf-8", errors="replace"))
+    # A pty merges stdout and stderr, so the captured text doubles as stderr.
+    return output, returncode, output
+
+
+def _select_capture():
+    """Pick how to run agy. agy renders to its terminal rather than stdout, so a
+    pseudo-terminal is needed to capture output: ConPTY on Windows, a pty on
+    POSIX. Anything else falls back to a plain stdout pipe."""
+    if sys.platform == "win32":
+        return _run_via_conpty
+    if os.name == "posix":
+        return _run_via_pty
+    return _run_via_subprocess
+
+
 def run_agy_command(
     args: list[str], timeout_s: float, binary: Optional[str] = None
 ) -> str:
@@ -162,10 +212,7 @@ def run_agy_command(
     cmd = [binary] + args
     env = os.environ.copy()
 
-    if _use_conpty():
-        stdout, returncode, stderr = _run_via_conpty(cmd, env, timeout_s)
-    else:
-        stdout, returncode, stderr = _run_via_subprocess(cmd, env, timeout_s)
+    stdout, returncode, stderr = _select_capture()(cmd, env, timeout_s)
 
     if returncode != 0:
         raise RuntimeError(f"agy exited with code {returncode}\nStderr:\n{stderr}")

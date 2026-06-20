@@ -50,13 +50,10 @@ If `agy` authentication becomes stuck, delete the `~/.antigravitycli/` and `~/.g
 
 **Tools return an "empty response" even though `agy_health` is green.** `agy`
 renders its `--print` response to the terminal rather than to stdout, so a plain
-pipe captures nothing. On **Windows** this server runs `agy` under a pseudo-console
-(ConPTY, via `pywinpty`) and reconstructs the text, so output is captured
-normally. On **macOS/Linux** the server currently reads stdout directly; if your
-`agy` build also writes only to the terminal there, run `agy update` (and verify
-with `agy --print "hi" > out.txt` — an empty `out.txt` means print-mode output is
-not going to stdout). Capturing via a PTY on those platforms is a planned
-follow-up.
+pipe captures nothing. To handle this the server runs `agy` under a
+pseudo-terminal and reconstructs the text: a ConPTY (via `pywinpty`) on
+**Windows** and a stdlib `pty` on **macOS/Linux**. If you still see empty
+responses, confirm `agy_health` is green and run `agy update`.
 
 ## Contribution
 PRs are welcome! Before submitting, ensure all tests pass:
