@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+
 def get_home_dir() -> Path:
     if os.name == "nt":
         return Path(os.environ.get("USERPROFILE", "~")).expanduser()
@@ -8,17 +9,26 @@ def get_home_dir() -> Path:
 
 def check_auth_files() -> tuple[bool, str]:
     home = get_home_dir()
-    
+
+    # New layout (agy >= 1.1.x): single OAuth token file under .gemini.
+    antigravity_token = home / ".gemini" / "antigravity-cli" / "antigravity-oauth-token"
+    if antigravity_token.is_file():
+        return True, ""
+
+    # Legacy layout.
     agy_dir = home / ".antigravitycli"
     if agy_dir.is_dir():
         json_files = list(agy_dir.glob("*.json"))
         if not json_files:
             return False, f"No JSON auth files found in {agy_dir}"
     else:
-        return False, f"Antigravity CLI config directory {agy_dir} not found"
-        
+        return False, (
+            f"Antigravity CLI config not found: neither {antigravity_token} "
+            f"nor the legacy directory {agy_dir} exist"
+        )
+
     gemini_creds = home / ".gemini" / "oauth_creds.json"
     if not gemini_creds.is_file():
         return False, f"Gemini oauth credentials not found at {gemini_creds}"
-        
+
     return True, ""
