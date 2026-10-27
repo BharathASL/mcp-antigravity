@@ -7,7 +7,9 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Author", email = "author@example.com" }]
 dependencies = [
-    "mcp>=1.0.0",
+    # mcp >= 1.3 removed the FastMCP compatibility shim at
+    # mcp.server.fastmcp, which this server imports.
+    "mcp>=1.0.0,<1.3",
     # On Windows, agy --print writes to the console, not stdout. A pseudo-console
     # (ConPTY) is required to capture its output.
     "pywinpty>=2.0; sys_platform == 'win32'",
